@@ -449,11 +449,17 @@ def git_push(commit_msg=None):
     print(f"Committed and pushed: {commit_msg}")
 
 
-def build_site(site_name, site_config, config):
+def build_site(site_name, site_config, config, local=False):
     """Build a single site."""
     # Get site-specific paths
     content_dir = site_config.get('content_dir', os.path.join(SCRIPT_DIR, 'content', site_name))
-    output_dir = site_config.get('output_dir', os.path.join(SCRIPT_DIR, 'output', site_name))
+    
+    # Output directory: use deploy.path if --local, otherwise local output_dir
+    if local and site_config.get('deploy', {}).get('path'):
+        output_dir = site_config['deploy']['path']
+    else:
+        output_dir = site_config.get('output_dir', os.path.join(SCRIPT_DIR, 'output', site_name))
+    
     theme = site_config.get('theme', 'default')
     
     # Load site-specific plugins
@@ -507,6 +513,9 @@ def main():
         show_auth_key()
         return
     
+    # Check for --local flag (build directly to deploy path)
+    local_build = '--local' in sys.argv
+    
     # Parse --site argument for multi-site configs
     site_arg = None
     if '--site' in sys.argv:
@@ -557,10 +566,10 @@ def main():
     all_posts = {}
     for site_name in sites_to_build:
         site_config = config['sites'][site_name]
-        all_posts[site_name] = build_site(site_name, site_config, config)
+        all_posts[site_name] = build_site(site_name, site_config, config, local=local_build)
     
-    # Deploy if --deploy flag
-    if '--deploy' in sys.argv:
+    # Deploy if --deploy flag (only if not --local, since --local already deploys)
+    if '--deploy' in sys.argv and not local_build:
         for site_name in sites_to_build:
             site_config = config['sites'][site_name]
             if site_config.get('deploy', {}).get('method') == 'rsync':

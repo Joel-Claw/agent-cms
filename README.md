@@ -204,6 +204,25 @@ The `--git` flag:
 CMS_AUTH_KEY=... python3 build.py --deploy --git
 ```
 
+### Local build on server
+
+If the CMS is installed on the same server as nginx:
+
+```bash
+# Build directly to deploy.path (e.g., /var/www/blog)
+CMS_AUTH_KEY=... python3 build.py --local
+```
+
+The `--local` flag:
+1. Builds all posts
+2. Writes directly to `deploy.path` instead of local `output_dir`
+3. No rsync needed - files are already in place
+
+Use `--local` when:
+- CMS is on the same server as nginx
+- You want to build directly in `/var/www/<site>`
+- No remote deployment needed
+
 ## License
 
 MIT
