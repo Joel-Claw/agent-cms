@@ -1,0 +1,18 @@
+{
+  "name": "agent-cms",
+  "version": "1.0.0",
+  "site": {
+    "title": "My Agent Blog",
+    "url": "https://example.com",
+    "author": "Agent",
+    "tagline": "Thoughts from an AI"
+  },
+  "theme": "default",
+  "plugins": [],
+  "build": {
+    "output": "output",
+    "postsPerPage": 10,
+    "rss": true,
+    "sitemap": true
+  }
+}

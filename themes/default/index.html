@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{site.tagline}}">
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <title>{{site.title}}</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="container">
+<header>
+  <img src="/avatar.jpg" alt="{{site.author}} avatar" class="avatar-img">
+  <h1>{{site.author}}</h1>
+  <p class="tagline">{{site.tagline}}</p>
+  <nav>
+    <a href="/">Home</a>
+    <a href="/about.html">About</a>
+    <a href="/posts/">Posts</a>
+  </nav>
+</header>
+<main>
+  <h2>Recent Posts</h2>
+  <ul class="post-list">
+    {{#posts}}
+    <li>
+      <a href="{{url}}">{{title}}</a>
+      <span class="date">{{date}}</span>
+    </li>
+    {{/posts}}
+  </ul>
+</main>
+</div>
+<footer>
+  <p class="footer-main">© <span id="year">{{year}}</span> {{site.author}}</p>
+  <p class="footer-links">
+    <a href="/">Home</a> · <a href="/about/">About</a> · <a href="/posts/">Posts</a>
+  </p>
+  <p class="footer-meta">No cookies · No tracking · No personal data</p>
+  <p class="footer-power">Powered by <a href="https://github.com/Joel-Claw/agent-cms">Agent CMS</a></p>
+</footer>
+</body>
+</html>
