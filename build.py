@@ -61,7 +61,27 @@ def verify_auth(provided_key, config):
 def load_config():
     """Load site configuration."""
     with open(CONFIG_FILE) as f:
-        return json.load(f)
+        config = json.load(f)
+    
+    # Support both single-site and multi-site configs
+    if 'sites' in config:
+        config['_multi_site'] = True
+    else:
+        # Single-site config - normalize to multi-site format internally
+        config['_multi_site'] = False
+        config['sites'] = {
+            'default': {
+                'site': config.get('site', {}),
+                'theme': config.get('theme', 'default'),
+                'content_dir': CONTENT_DIR,
+                'output_dir': OUTPUT_DIR,
+                'plugins': config.get('plugins', []),
+                'deploy': config.get('deploy', {}),
+            }
+        }
+        config['default_site'] = 'default'
+    
+    return config
 
 
 def load_plugins(config):
@@ -210,8 +230,11 @@ def render_template(template, context):
     return result
 
 
-def build_post(post_data, config, theme, plugins):
+def build_post(post_data, config, theme, plugins, output_dir=None):
     """Build a single post HTML file."""
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    
     # Run pre-render plugins
     post_data = run_plugins(plugins, 'pre_render', post_data)
     
@@ -242,9 +265,9 @@ def build_post(post_data, config, theme, plugins):
     html = run_plugins(plugins, 'post_render', html)
     
     # Write output
-    output_path = os.path.join(OUTPUT_DIR, 'posts', f"{post_data['slug']}.html")
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w') as f:
+    out_path = os.path.join(output_dir, 'posts', f"{post_data['slug']}.html")
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, 'w') as f:
         f.write(html)
     
     return {
@@ -254,8 +277,11 @@ def build_post(post_data, config, theme, plugins):
     }
 
 
-def build_index(posts, config, theme, plugins):
+def build_index(posts, config, theme, plugins, output_dir=None):
     """Build the index page listing all posts."""
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    
     context = {
         'site': config['site'],
         'posts': posts,
@@ -269,13 +295,16 @@ def build_index(posts, config, theme, plugins):
     html = run_plugins(plugins, 'post_render', html)
     
     # Copy to output
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    with open(os.path.join(OUTPUT_DIR, 'index.html'), 'w') as f:
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, 'index.html'), 'w') as f:
         f.write(html)
 
 
-def build_rss(posts, config):
+def build_rss(posts, config, output_dir=None):
     """Build RSS feed."""
+    if output_dir is None:
+        output_dir = OUTPUT_DIR
+    
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
 <channel>
@@ -292,16 +321,19 @@ def build_rss(posts, config):
 """
     rss += "</channel>\n</rss>"
     
-    with open(os.path.join(OUTPUT_DIR, 'rss.xml'), 'w') as f:
+    with open(os.path.join(output_dir, 'rss.xml'), 'w') as f:
         f.write(rss)
 
 
-def init_post(title):
+def init_post(title, content_dir=None):
     """Create a new post template."""
+    if content_dir is None:
+        content_dir = CONTENT_DIR
+    
     date = datetime.now().strftime('%Y-%m-%d')
     slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
     filename = f"{date}-{slug}.md"
-    filepath = os.path.join(CONTENT_DIR, filename)
+    filepath = os.path.join(content_dir, filename)
     
     content = f"""---
 title: {title}
@@ -314,7 +346,7 @@ description:
 Write your content here...
 """
     
-    os.makedirs(CONTENT_DIR, exist_ok=True)
+    os.makedirs(content_dir, exist_ok=True)
     with open(filepath, 'w') as f:
         f.write(content)
     
@@ -329,9 +361,9 @@ def show_auth_key():
     return key
 
 
-def deploy(config):
+def deploy(site_config, config):
     """Deploy output to remote server via rsync."""
-    deploy_config = config.get('deploy', {})
+    deploy_config = site_config.get('deploy', {})
     
     if not deploy_config.get('host') or not deploy_config.get('path'):
         print("ERROR: Deploy not configured. Set host and path in config.json")
@@ -341,6 +373,7 @@ def deploy(config):
     user = deploy_config.get('user', '')
     remote_path = deploy_config['path']
     key_file = deploy_config.get('key_file', '')
+    output_dir = site_config.get('output_dir', OUTPUT_DIR)
     
     # Build rsync command
     rsync_cmd = ['rsync', '-avz', '--delete']
@@ -349,7 +382,7 @@ def deploy(config):
         rsync_cmd.extend(['-e', f'ssh -i {key_file}'])
     
     # Source and destination
-    src = OUTPUT_DIR + '/'  # Trailing slash = copy contents, not the dir itself
+    src = output_dir + '/'  # Trailing slash = copy contents, not the dir itself
     if user:
         dest = f'{user}@{host}:{remote_path}'
     else:
@@ -363,8 +396,8 @@ def deploy(config):
     if result == 0:
         print("Deploy successful!")
         # Run on_publish plugins
-        plugins = load_plugins(config)
-        run_plugins(plugins, 'on_publish', {'status': 'success', 'url': config['site']['url']})
+        plugins = load_plugins({'plugins': site_config.get('plugins', [])})
+        run_plugins(plugins, 'on_publish', {'status': 'success', 'url': site_config['site']['url']})
     else:
         print(f"Deploy failed with code {result}")
         sys.exit(1)
@@ -416,58 +449,20 @@ def git_push(commit_msg=None):
     print(f"Committed and pushed: {commit_msg}")
 
 
-def main():
-    config = load_config()
-    plugins = load_plugins(config)
-    theme = config.get('theme', 'default')
-    require_auth = config.get('auth', {}).get('require_auth', False)
+def build_site(site_name, site_config, config):
+    """Build a single site."""
+    # Get site-specific paths
+    content_dir = site_config.get('content_dir', os.path.join(SCRIPT_DIR, 'content', site_name))
+    output_dir = site_config.get('output_dir', os.path.join(SCRIPT_DIR, 'output', site_name))
+    theme = site_config.get('theme', 'default')
     
-    # --show-key: Display auth key (for agent to store)
-    if '--show-key' in sys.argv:
-        show_auth_key()
-        return
-    
-    # --deploy: Push output to server (requires auth)
-    if '--deploy' in sys.argv:
-        if require_auth:
-            auth_key = os.environ.get('CMS_AUTH_KEY')
-            if not verify_auth(auth_key, config):
-                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
-                sys.exit(1)
-        # Build first, then deploy
-        # (fall through to build logic below)
-    
-    # --git: Commit and push to git (requires auth)
-    if '--git' in sys.argv:
-        if require_auth:
-            auth_key = os.environ.get('CMS_AUTH_KEY')
-            if not verify_auth(auth_key, config):
-                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
-                sys.exit(1)
-        # Build first, then git push
-        # (fall through to build logic below)
-    
-    # --init requires auth if enabled
-    if '--init' in sys.argv:
-        if require_auth:
-            auth_key = os.environ.get('CMS_AUTH_KEY')
-            if not verify_auth(auth_key, config):
-                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
-                sys.exit(1)
-        title = ' '.join(sys.argv[2:]) if len(sys.argv) > 2 else 'New Post'
-        init_post(title)
-        return
-    
-    # Build requires auth if enabled
-    if require_auth:
-        auth_key = os.environ.get('CMS_AUTH_KEY')
-        if not verify_auth(auth_key, config):
-            print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
-            sys.exit(1)
+    # Load site-specific plugins
+    site_plugins = site_config.get('plugins', [])
+    plugins = load_plugins({'plugins': site_plugins}) if site_plugins else []
     
     # Ensure output directories exist
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_DIR, 'posts'), exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.join(output_dir, 'posts'), exist_ok=True)
     
     # Copy static files from theme
     theme_dir = os.path.join(THEMES_DIR, theme)
@@ -475,34 +470,103 @@ def main():
         src = os.path.join(theme_dir, static_file)
         if os.path.exists(src):
             import shutil
-            shutil.copy(src, os.path.join(OUTPUT_DIR, static_file))
+            shutil.copy(src, os.path.join(output_dir, static_file))
     
     # Find and build all posts
     posts = []
-    for filename in sorted(os.listdir(CONTENT_DIR), reverse=True):
-        if filename.endswith('.md'):
-            filepath = os.path.join(CONTENT_DIR, filename)
-            post_data = parse_post(filepath)
-            post_info = build_post(post_data, config, theme, plugins)
-            posts.append(post_info)
+    content_path = content_dir
+    if not os.path.isabs(content_dir):
+        content_path = os.path.join(SCRIPT_DIR, content_dir)
+    
+    if os.path.exists(content_path):
+        for filename in sorted(os.listdir(content_path), reverse=True):
+            if filename.endswith('.md'):
+                filepath = os.path.join(content_path, filename)
+                post_data = parse_post(filepath)
+                post_info = build_post(post_data, {'site': site_config['site'], 'build': config.get('build', {})}, theme, plugins, output_dir)
+                posts.append(post_info)
     
     # Build index
-    build_index(posts, config, theme, plugins)
+    build_index(posts, {'site': site_config['site']}, theme, plugins, output_dir)
     
     # Build RSS
-    if config['build'].get('rss'):
-        build_rss(posts, config)
+    if config.get('build', {}).get('rss'):
+        build_rss(posts, {'site': site_config['site'], 'build': config.get('build', {})}, output_dir)
     
-    print(f"Built {len(posts)} posts to {OUTPUT_DIR}/")
+    print(f"Built {len(posts)} posts to {output_dir}/")
+    
+    return posts
+
+
+def main():
+    config = load_config()
+    require_auth = config.get('auth', {}).get('require_auth', False)
+    
+    # --show-key: Display auth key (for agent to store)
+    if '--show-key' in sys.argv:
+        show_auth_key()
+        return
+    
+    # Parse --site argument for multi-site configs
+    site_arg = None
+    if '--site' in sys.argv:
+        idx = sys.argv.index('--site')
+        if idx + 1 < len(sys.argv):
+            site_arg = sys.argv[idx + 1]
+    
+    # Determine which site(s) to build
+    if config['_multi_site']:
+        if site_arg:
+            if site_arg not in config['sites']:
+                print(f"ERROR: Site '{site_arg}' not found in config")
+                print(f"Available sites: {', '.join(config['sites'].keys())}")
+                sys.exit(1)
+            sites_to_build = [site_arg]
+        else:
+            # Build default site or all sites
+            default = config.get('default_site')
+            if default and default in config['sites']:
+                sites_to_build = [default]
+            else:
+                sites_to_build = list(config['sites'].keys())
+    else:
+        sites_to_build = ['default']
+    
+    # Auth check for write operations
+    if '--init' in sys.argv or '--deploy' in sys.argv or '--git' in sys.argv:
+        if require_auth:
+            auth_key = os.environ.get('CMS_AUTH_KEY')
+            if not verify_auth(auth_key, config):
+                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
+                sys.exit(1)
+    
+    # --init: Create new post
+    if '--init' in sys.argv:
+        title = ' '.join([a for a in sys.argv[2:] if not a.startswith('--')])
+        if not title:
+            title = 'New Post'
+        site_name = sites_to_build[0]
+        site_config = config['sites'][site_name]
+        content_dir = site_config.get('content_dir', os.path.join(SCRIPT_DIR, 'content', site_name))
+        if not os.path.isabs(content_dir):
+            content_dir = os.path.join(SCRIPT_DIR, content_dir)
+        init_post(title, content_dir)
+        return
+    
+    # Build site(s)
+    all_posts = {}
+    for site_name in sites_to_build:
+        site_config = config['sites'][site_name]
+        all_posts[site_name] = build_site(site_name, site_config, config)
     
     # Deploy if --deploy flag
     if '--deploy' in sys.argv:
-        deploy(config)
+        for site_name in sites_to_build:
+            site_config = config['sites'][site_name]
+            if site_config.get('deploy', {}).get('method') == 'rsync':
+                deploy(site_config, config)
     
     # Git commit and push if --git flag
     if '--git' in sys.argv:
         git_push()
 
-
-if __name__ == '__main__':
-    main()

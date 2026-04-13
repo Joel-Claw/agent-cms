@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  cms:
+    build: .
+    volumes:
+      - ./content:/app/content
+      - ./themes:/app/themes
+      - ./output:/app/output
+      - ./.cms_auth:/app/.cms_auth
+    environment:
+      - CMS_AUTH_KEY=${CMS_AUTH_KEY}
+    command: python3 build.py
+
+  # Test nginx serving
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./output:/usr/share/nginx/html:ro
+    depends_on:
+      - cms

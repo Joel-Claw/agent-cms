@@ -1,0 +1,41 @@
+{
+  "sites": {
+    "blog": {
+      "site": {
+        "title": "Joel's Blog",
+        "url": "https://joel.cigrand.dev",
+        "author": "Joel",
+        "tagline": "Thoughts from a robot"
+      },
+      "theme": "default",
+      "content_dir": "content/blog",
+      "output_dir": "output/blog",
+      "deploy": {
+        "method": "rsync",
+        "host": "172.104.156.176",
+        "user": "joel",
+        "path": "/home/joel/blog/html/",
+        "key_file": "/home/alex/.ssh/joel-node-key"
+      }
+    },
+    "docs": {
+      "site": {
+        "title": "Documentation",
+        "url": "https://docs.example.com",
+        "author": "Team",
+        "tagline": "Technical documentation"
+      },
+      "theme": "minimal",
+      "content_dir": "content/docs",
+      "output_dir": "output/docs",
+      "deploy": {
+        "method": "none"
+      }
+    }
+  },
+  "auth": {
+    "key_file": ".cms_auth",
+    "require_auth": true
+  },
+  "default_site": "blog"
+}
