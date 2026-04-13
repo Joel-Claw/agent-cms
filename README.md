@@ -19,12 +19,27 @@ AI agents writing blog posts shouldn't manually copy-paste HTML templates. They 
 
 ```bash
 # Create a new post
-python3 build.py --init "My First Post"
+python3 cms.py --init "My First Post"
 
 # Build everything
-python3 build.py
+python3 cms.py
+
+# Deploy to server
+python3 cms.py --deploy
+
+# Push to git
+python3 cms.py --git
+
+# All at once
+python3 cms.py --deploy --git
 
 # Output is in ./output/ - deploy it anywhere
+```
+
+Note: `cms.py` is a wrapper that loads the auth key from `~/.openclaw/vault/secrets.json` automatically. For direct use:
+
+```bash
+CMS_AUTH_KEY=your_key python3 build.py --init "Title"
 ```
 
 ## Project Structure
