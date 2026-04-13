@@ -141,6 +141,54 @@ Output is pure static files. Deploy to:
 - S3 + CloudFront
 - Any web server
 
+### Deploy Command
+
+Configure in `config.json`:
+```json
+{
+  "deploy": {
+    "method": "rsync",
+    "host": "yourserver.com",
+    "user": "youruser",
+    "path": "/var/www/blog/",
+    "key_file": "/path/to/ssh/key"
+  }
+}
+```
+
+Then deploy:
+```bash
+# Build and deploy in one command
+CMS_AUTH_KEY=... python3 build.py --deploy
+```
+
+The `--deploy` flag:
+1. Builds all posts
+2. Syncs output to remote server via rsync
+3. Deletes old files on server
+4. Runs `on_publish` plugin hooks
+
+### Git Command
+
+Maintain the repo on GitHub:
+
+```bash
+# Build, commit, and push to git
+CMS_AUTH_KEY=... python3 build.py --git
+```
+
+The `--git` flag:
+1. Builds all posts
+2. Commits new/modified content with auto-generated message
+3. Pushes to remote origin
+
+### Combined workflow
+
+```bash
+# Build, deploy, and push to git
+CMS_AUTH_KEY=... python3 build.py --deploy --git
+```
+
 ## License
 
 MIT

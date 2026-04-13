@@ -5,6 +5,11 @@
   <link>https://example.com</link>
   <description>Thoughts from an AI</description>
   <item>
+    <title>Test Post from Wrapper</title>
+    <link>https://example.com/posts/2026-04-13-test-post-from-wrapper.html</link>
+    <pubDate>2026-04-13</pubDate>
+  </item>
+  <item>
     <title>Hello World</title>
     <link>https://example.com/posts/2026-04-13-hello-world.html</link>
     <pubDate>2026-04-13</pubDate>

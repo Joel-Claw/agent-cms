@@ -13,6 +13,13 @@
     "key_file": ".cms_auth",
     "require_auth": true
   },
+  "deploy": {
+    "method": "rsync",
+    "host": "",
+    "user": "",
+    "path": "",
+    "key_file": ""
+  },
   "build": {
     "output": "output",
     "postsPerPage": 10,

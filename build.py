@@ -329,6 +329,93 @@ def show_auth_key():
     return key
 
 
+def deploy(config):
+    """Deploy output to remote server via rsync."""
+    deploy_config = config.get('deploy', {})
+    
+    if not deploy_config.get('host') or not deploy_config.get('path'):
+        print("ERROR: Deploy not configured. Set host and path in config.json")
+        sys.exit(1)
+    
+    host = deploy_config['host']
+    user = deploy_config.get('user', '')
+    remote_path = deploy_config['path']
+    key_file = deploy_config.get('key_file', '')
+    
+    # Build rsync command
+    rsync_cmd = ['rsync', '-avz', '--delete']
+    
+    if key_file:
+        rsync_cmd.extend(['-e', f'ssh -i {key_file}'])
+    
+    # Source and destination
+    src = OUTPUT_DIR + '/'  # Trailing slash = copy contents, not the dir itself
+    if user:
+        dest = f'{user}@{host}:{remote_path}'
+    else:
+        dest = f'{host}:{remote_path}'
+    
+    rsync_cmd.extend([src, dest])
+    
+    print(f"Deploying to {dest}...")
+    result = os.system(' '.join(rsync_cmd))
+    
+    if result == 0:
+        print("Deploy successful!")
+        # Run on_publish plugins
+        plugins = load_plugins(config)
+        run_plugins(plugins, 'on_publish', {'status': 'success', 'url': config['site']['url']})
+    else:
+        print(f"Deploy failed with code {result}")
+        sys.exit(1)
+
+
+def git_push(commit_msg=None):
+    """Commit and push changes to git repo."""
+    # Change to script directory for git operations
+    os.chdir(SCRIPT_DIR)
+    
+    if not os.path.exists('.git'):
+        print("ERROR: Not a git repository")
+        sys.exit(1)
+    
+    # Check for changes
+    result = os.system('git diff --quiet --exit-code')
+    if result == 0:
+        print("No changes to commit")
+        return
+    
+    # Add all changes
+    os.system('git add -A')
+    
+    # Commit
+    if not commit_msg:
+        # Generate commit message from new/modified posts
+        status_output = os.popen('git status --porcelain').read()
+        
+        new_posts = [l.split()[1] for l in status_output.split('\n') if 'content/posts/' in l and l.startswith('A')]
+        mod_posts = [l.split()[1] for l in status_output.split('\n') if 'content/posts/' in l and l.startswith('M')]
+        
+        parts = []
+        if new_posts:
+            parts.append(f"Add {len(new_posts)} new post(s)")
+        if mod_posts:
+            parts.append(f"Update {len(mod_posts)} post(s)")
+        
+        commit_msg = ' | '.join(parts) if parts else 'Update content'
+    
+    commit_cmd = f'git commit -m "{commit_msg}"'
+    os.system(commit_cmd)
+    
+    # Push
+    result = os.system('git push')
+    if result != 0:
+        print("ERROR: Git push failed")
+        sys.exit(1)
+    
+    print(f"Committed and pushed: {commit_msg}")
+
+
 def main():
     config = load_config()
     plugins = load_plugins(config)
@@ -339,6 +426,26 @@ def main():
     if '--show-key' in sys.argv:
         show_auth_key()
         return
+    
+    # --deploy: Push output to server (requires auth)
+    if '--deploy' in sys.argv:
+        if require_auth:
+            auth_key = os.environ.get('CMS_AUTH_KEY')
+            if not verify_auth(auth_key, config):
+                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
+                sys.exit(1)
+        # Build first, then deploy
+        # (fall through to build logic below)
+    
+    # --git: Commit and push to git (requires auth)
+    if '--git' in sys.argv:
+        if require_auth:
+            auth_key = os.environ.get('CMS_AUTH_KEY')
+            if not verify_auth(auth_key, config):
+                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
+                sys.exit(1)
+        # Build first, then git push
+        # (fall through to build logic below)
     
     # --init requires auth if enabled
     if '--init' in sys.argv:
@@ -387,6 +494,14 @@ def main():
         build_rss(posts, config)
     
     print(f"Built {len(posts)} posts to {OUTPUT_DIR}/")
+    
+    # Deploy if --deploy flag
+    if '--deploy' in sys.argv:
+        deploy(config)
+    
+    # Git commit and push if --git flag
+    if '--git' in sys.argv:
+        git_push()
 
 
 if __name__ == '__main__':
