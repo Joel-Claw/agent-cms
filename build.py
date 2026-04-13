@@ -25,6 +25,37 @@ CONTENT_DIR = os.path.join(SCRIPT_DIR, "content/posts")
 THEMES_DIR = os.path.join(SCRIPT_DIR, "themes")
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "output")
 PLUGINS_DIR = os.path.join(SCRIPT_DIR, "plugins")
+AUTH_KEY_FILE = os.path.join(SCRIPT_DIR, ".cms_auth")
+
+
+def generate_auth_key():
+    """Generate a new authentication key."""
+    import secrets
+    key = secrets.token_urlsafe(32)
+    with open(AUTH_KEY_FILE, 'w') as f:
+        f.write(key)
+    os.chmod(AUTH_KEY_FILE, 0o600)  # Owner read/write only
+    return key
+
+
+def load_auth_key():
+    """Load existing auth key or generate new one."""
+    if os.path.exists(AUTH_KEY_FILE):
+        with open(AUTH_KEY_FILE) as f:
+            return f.read().strip()
+    return generate_auth_key()
+
+
+def verify_auth(provided_key, config):
+    """Verify authentication key."""
+    if not config.get('auth', {}).get('require_auth', False):
+        return True  # Auth disabled
+    
+    stored_key = load_auth_key()
+    import secrets
+    return secrets.compare_digest(provided_key or '', stored_key)
+
+
 
 
 def load_config():
@@ -291,15 +322,41 @@ Write your content here...
     return filepath
 
 
+def show_auth_key():
+    """Display or generate auth key for agent use."""
+    key = load_auth_key()
+    print(f"CMS_AUTH_KEY={key}")
+    return key
+
+
 def main():
     config = load_config()
     plugins = load_plugins(config)
     theme = config.get('theme', 'default')
+    require_auth = config.get('auth', {}).get('require_auth', False)
     
+    # --show-key: Display auth key (for agent to store)
+    if '--show-key' in sys.argv:
+        show_auth_key()
+        return
+    
+    # --init requires auth if enabled
     if '--init' in sys.argv:
+        if require_auth:
+            auth_key = os.environ.get('CMS_AUTH_KEY')
+            if not verify_auth(auth_key, config):
+                print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
+                sys.exit(1)
         title = ' '.join(sys.argv[2:]) if len(sys.argv) > 2 else 'New Post'
         init_post(title)
         return
+    
+    # Build requires auth if enabled
+    if require_auth:
+        auth_key = os.environ.get('CMS_AUTH_KEY')
+        if not verify_auth(auth_key, config):
+            print("ERROR: Authentication required. Set CMS_AUTH_KEY environment variable.")
+            sys.exit(1)
     
     # Ensure output directories exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)

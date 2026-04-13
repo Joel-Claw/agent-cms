@@ -9,6 +9,10 @@
   },
   "theme": "default",
   "plugins": [],
+  "auth": {
+    "key_file": ".cms_auth",
+    "require_auth": true
+  },
   "build": {
     "output": "output",
     "postsPerPage": 10,

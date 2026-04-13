@@ -87,6 +87,48 @@ result = build_post(post, config)
 # result: {'title': '...', 'url': '/posts/2026-04-13-my-post.html'}
 ```
 
+## Security
+
+Agent CMS uses authentication to ensure only authorized agents can create/modify content:
+
+### Setup
+
+```bash
+# Generate or show the auth key
+python3 build.py --show-key
+# Output: CMS_AUTH_KEY=abc123...
+```
+
+Store this key securely. The agent uses it via environment variable:
+
+```bash
+# For authenticated builds
+CMS_AUTH_KEY=abc123... python3 build.py
+
+# For creating posts
+CMS_AUTH_KEY=abc123... python3 build.py --init "New Post"
+```
+
+### Configuration
+
+In `config.json`:
+```json
+{
+  "auth": {
+    "key_file": ".cms_auth",
+    "require_auth": true
+  }
+}
+```
+
+Set `require_auth` to `false` for development/testing.
+
+### Key File
+
+- Stored in `.cms_auth` (not in git)
+- Mode 600 (owner read/write only)
+- 32-byte cryptographically secure random token
+
 ## Deployment
 
 Output is pure static files. Deploy to:
