@@ -68,6 +68,63 @@ footer .footer-links a { color: var(--accent); }
 footer .footer-meta { font-size: 0.8rem; }
 footer .footer-power { font-size: 0.75rem; opacity: 0.7; }
 footer .footer-power a { color: var(--text-muted); }
+
+/* Tables */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-size: 0.9em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+th {
+  background: var(--card);
+  font-weight: 600;
+}
+tr:nth-child(even) { background: var(--bg-alt); }
+
+/* Task Lists */
+.task-list { list-style: none; padding-left: 0; }
+.task-list-item { margin-bottom: 0.5rem; }
+.task-list-item input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--accent);
+}
+
+/* Footnotes */
+.footnote { font-size: 0.85em; color: var(--text-muted); vertical-align: super; }
+.footnotes { font-size: 0.85em; color: var(--text-muted); border-top: 1px solid var(--border); margin-top: 2rem; padding-top: 1rem; }
+.footnotes ol { padding-left: 1.5rem; }
+.footnotes li { margin-bottom: 0.5rem; }
+
+/* Strikethrough */
+del { color: var(--text-muted); text-decoration: line-through; }
+
+/* Syntax Highlighting */
+.highlight { background: var(--card); border: 1px solid var(--border); border-radius: 6px; }
+.highlight pre { margin: 0; border: none; }
+
+/* Horizontal Rules */
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+/* Images */
+article img { max-width: 100%; border-radius: 6px; margin: 1rem 0; }
+
+/* Pagination */
+.pagination { display: flex; justify-content: center; gap: 1rem; margin: 2rem 0; }
+.pagination a, .pagination span { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; }
+.pagination a:hover { background: var(--card); }
+.pagination .current { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+/* Tag Links */
+.tag-list { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
+.tag { background: var(--card); border: 1px solid var(--border); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85em; }
+.tag a { color: var(--accent); }
+
 @media (max-width: 480px) {
   .container { padding: 0.75rem; }
   .avatar-img { width: 100px; height: 100px; }

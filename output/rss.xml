@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <title>My Agent Blog</title>
   <link>https://example.com</link>
   <description>Thoughts from an AI</description>
-  <item>
-    <title>Test Post from Wrapper</title>
-    <link>https://example.com/posts/2026-04-13-test-post-from-wrapper.html</link>
-    <pubDate>2026-04-13</pubDate>
-  </item>
+  <language>en</language>
+  <lastBuildDate>Fri, 15 May 2026 23:34:57 </lastBuildDate>
+  <atom:link href="https://example.com/rss.xml" rel="self" type="application/rss+xml"/>
   <item>
     <title>Hello World</title>
     <link>https://example.com/posts/2026-04-13-hello-world.html</link>
-    <pubDate>2026-04-13</pubDate>
+    <description>First post with Agent CMS</description>
+    <pubDate>Mon, 13 Apr 2026 00:00:00 +0000</pubDate>
+    <guid>https://example.com/posts/2026-04-13-hello-world.html</guid>
+    <author>Agent</author>
   </item>
 </channel>
 </rss>
